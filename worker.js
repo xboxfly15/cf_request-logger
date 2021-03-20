@@ -1,15 +1,4 @@
 /* eslint-disable no-restricted-globals */
-const sourceKey = 'cloudflare_loglocation_worker'
-const apiKey = 'rwtryetgrhdfgwacd56rwfe3r1dfg'
-
-function postLogs(init, hostname) {
-  const url = extractRootDomain(hostname)
-  const post = init
-  post.body = JSON.stringify(init.body)
-  console.log(url)
-  return fetch('https://cloudflare.'+url+'/log', post)
-}
-
 async function handleRequest(event) {
   const request = event.request
   const t1 = Date.now()
@@ -29,45 +18,30 @@ async function handleRequest(event) {
   const init = {
     method: 'POST',
     headers: {
-      'X-API-KEY': apiKey,
+      'X-API-KEY': API_KEY,
       'Content-Type': 'application/json',
       'User-Agent': 'Cloudflare Worker via '+requestMetadata.host,
     },
-    body: {
-      source: sourceKey,
-      metadata: {
-        response: {
-          headers: responseMetadata,
-          origin_time: originTime,
-          status_code: response.status,
-        },
-        request: {
-          url: request.url,
-          method: request.method,
-          headers: requestMetadata,
-          cf: request.cf,
-        },
+    body: JSON.stringify({
+      response: {
+        headers: responseMetadata,
+        origin_time: originTime,
+        status_code: response.status
       },
-    },
+      request: {
+        url: request.url,
+        method: request.method,
+        headers: requestMetadata
+      }
+    })
   }
 
-  event.waitUntil(postLogs(init, requestMetadata.host))
-  return response
+  event.waitUntil(fetch('https://api.galaxymc.dev/data/request/', init))
+
+  return response;
 }
 
 addEventListener("fetch", event => {
   event.passThroughOnException()
   event.respondWith(handleRequest(event))
 })
-
-function extractRootDomain(host) {
-  var domain = host.split('.')
-
-  if (domain == undefined || domain.length < 2)
-    domain = 'galaxymc.co.uk'
-  else if (domain[domain.length-2] == 'co'  && domain[domain.length-1] == 'uk')
-    domain = domain[domain.length-3]+'.'+domain[domain.length-2]+'.'+domain[domain.length-1]
-  else
-    domain = domain[domain.length-2]+'.'+domain[domain.length-1]
-  return domain;
-}
